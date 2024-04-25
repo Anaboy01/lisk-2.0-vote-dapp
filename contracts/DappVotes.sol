@@ -78,10 +78,8 @@ contract DappVotes {
     string memory description,
     uint startsAt,
     uint endsAt
-
-
-  ) public{
-     require(pollExist[id], 'Poll not found');
+  ) public {
+    require(pollExist[id], 'Poll not found');
     require(polls[id].director == msg.sender, 'Unauthorized entity');
     require(bytes(title).length > 0, 'Title cannot be empty');
     require(bytes(description).length > 0, 'Description cannot be empty');
@@ -90,7 +88,7 @@ contract DappVotes {
     require(polls[id].votes < 1, 'Poll has votes already');
     require(endsAt > startsAt, 'End date must be greater than start date');
 
-     polls[id].title = title;
+    polls[id].title = title;
     polls[id].description = description;
     polls[id].startsAt = startsAt;
     polls[id].endsAt = endsAt;
@@ -104,32 +102,88 @@ contract DappVotes {
     polls[id].deleted = true;
   }
 
+  function getPoll(uint id) public view returns (PollStruct memory) {
+    return polls[id];
+  }
+
   function getPolls() public view returns (PollStruct[] memory Polls) {
     uint available;
     for (uint i = 1; i <= totalPolls.current(); i++) {
-        if(!polls[i].deleted) available++;
+      if (!polls[i].deleted) available++;
     }
 
     Polls = new PollStruct[](available);
     uint index;
 
     for (uint i = 1; i <= totalPolls.current(); i++) {
-        if(!polls[i].deleted) {
-            Polls[index++] = polls[i];
-        }
+      if (!polls[i].deleted) {
+        Polls[index++] = polls[i];
+      }
     }
   }
 
-  function contest(uint id, string memory name, string memory image ) public {
-    require
+  function contest(uint id, string memory name, string memory image) public {
+    require(pollExist[id], 'Poll not found');
+    require(bytes(name).length > 0, 'name cannot be empty');
+    require(bytes(image).length > 0, 'image cannot be empty');
+    require(polls[id].votes < 1, 'Poll has votes already');
+    require(!contested[id][msg.sender], 'Already contested');
+
+    totalContestants.increment();
+
+    ContestantStruct memory contestant;
+    contestant.name = name;
+    contestant.image = image;
+    contestant.voter = msg.sender;
+    contestant.id = totalContestants.current();
+
+    contestants[id][contestant.id] = contestant;
+    contested[id][msg.sender] = true;
+    polls[id].avatars.push(image);
+    polls[id].contestants++;
   }
 
+  function getContestant(uint id, uint cid) public view returns (ContestantStruct memory) {
+    return contestants[id][cid];
+  }
 
+  function getContestants(uint id) public view returns (ContestantStruct[] memory Contestants) {
+    uint available;
+    for (uint i = 1; i <= totalContestants.current(); i++) {
+      if (contestants[id][i].id == i) available++;
+    }
 
+    Contestants = new ContestantStruct[](available);
+    uint index;
 
-   function currentTime() internal view returns (uint256) {
+    for (uint i = 1; i <= totalContestants.current(); i++) {
+      if (contestants[id][i].id == i) {
+        Contestants[index++] = contestants[id][i];
+      }
+    }
+  }
+
+  function vote(uint id, uint cid) public {
+    require(pollExist[id], 'Poll not found');
+    require(!voted[id][msg.sender], 'Already voted');
+    require(!polls[id].deleted, 'Polling not available');
+    require(polls[id].contestants > 1, 'Not enough contestants');
+    require(
+      currentTime() >= polls[id].startsAt && currentTime() < polls[id].endsAt,
+      'Voting must be in session'
+    );
+
+    polls[id].votes++;
+    polls[id].voters.push(msg.sender);
+
+    contestants[id][cid].votes++;
+    contestants[id][cid].voters.push(msg.sender);
+    voted[id][msg.sender] = true;
+
+    emit Voted(msg.sender, currentTime());
+  }
+
+  function currentTime() internal view returns (uint256) {
     return (block.timestamp * 1000) + 1000;
   }
-
-  
 }
