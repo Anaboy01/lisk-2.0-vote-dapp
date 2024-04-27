@@ -51,7 +51,7 @@ contract DappVotes {
   ) public {
     require(bytes(title).length > 0, 'Title can not be empty');
     require(bytes(description).length > 0, 'Description can not be empty');
-    require(bytes(image).length > 0, 'Image url can not be empty');
+    require(bytes(image).length > 0, 'Image URL cannot be empty');
     require(startsAt > 0, 'Start date must be greater than 0');
     require(endsAt > startsAt, 'End date must be greater than Start Date');
 

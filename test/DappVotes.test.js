@@ -83,6 +83,97 @@ describe('Contracts', () => {
           'Image URL cannot be empty'
         )
       })
+      it('should confirm poll creation failures', async () => {
+        await expectRevert(
+          contract.createPoll(image, title, description, 0, ends),
+          'Start date must be greater than 0'
+        )
+      })
+      it('should confirm poll update failures', async () => {
+        await expectRevert(
+          contract.updatePoll(100, image, 'New Title', description, 0, ends),
+          'Poll not found'
+        )
+      })
+      it('should confirm poll deletion failures', async () => {
+        await expectRevert(
+          contract.deletePoll(100),
+          'Poll not found'
+        )
+      })
+    })
+  })
+
+  describe('Poll Contest', () => {
+    beforeEach(async () => {
+      await contract.createPoll(image, title, description, starts, ends)
+    })
+
+    describe('Success', () => {
+      it('should confirm contest entry success', async () => {
+        result = await contract.getPoll(pollId)
+        expect(result.contestants.toNumber()).to.be.equal(0)
+
+        await contract.connect(contestant1).contest(pollId, name1, avater1)
+        await contract.connect(contestant2).contest(pollId, name2, avater2)
+
+        result = await contract.getPoll(pollId)
+        expect(result.contestants.toNumber()).to.be.equal(2)
+
+        result = await contract.getContestants(pollId)
+        expect(result).to.have.lengthOf(2)
+      })
+    })
+
+    describe('Failure', () => {
+      it('should confirm contest entry failure', async () => {
+        await expectRevert(contract.contest(100, name1, avater1), 'Poll not found')
+        await expectRevert(contract.contest(pollId, '', avater1), 'name cannot be empty')
+
+        await contract.connect(contestant1).contest(pollId, name1, avater1)
+        await expectRevert(
+          contract.connect(contestant1).contest(pollId, name1, avater1),
+          'Already contested'
+        )
+      })
+    })
+  })
+
+  describe('Poll Voting', () => {
+    beforeEach(async () => {
+      await contract.createPoll(image, title, description, starts, ends)
+      await contract.connect(contestant1).contest(pollId, name1, avater1)
+      await contract.connect(contestant2).contest(pollId, name2, avater2)
+    })
+
+    describe('Success', () => {
+      it('should confirm contest entry success', async () => {
+        result = await contract.getPoll(pollId)
+        expect(result.votes.toNumber()).to.be.equal(0)
+
+        await contract.connect(contestant1).vote(pollId, contestantId)
+        await contract.connect(contestant2).vote(pollId, contestantId)
+
+        result = await contract.getPoll(pollId)
+        expect(result.votes.toNumber()).to.be.equal(2)
+        expect(result.voters).to.have.lengthOf(2)
+        expect(result.avatars).to.have.lengthOf(2)
+
+        result = await contract.getContestants(pollId)
+        expect(result).to.have.lengthOf(2)
+
+        result = await contract.getContestant(pollId, contestantId)
+        expect(result.voters).to.have.lengthOf(2)
+        expect(result.voter).to.be.equal(contestant1.address)
+      })
+    })
+
+    describe('Failure', () => {
+      it('should confirm contest entry failure', async () => {
+        await expectRevert(contract.vote(100, contestantId), 'Poll not found')
+        await contract.deletePoll(pollId)
+        await expectRevert(contract.vote(pollId, contestantId), 'Polling not available')
+      })
     })
   })
 })
