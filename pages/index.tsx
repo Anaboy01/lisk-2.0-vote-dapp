@@ -3,11 +3,26 @@ import CreatePoll from '@/components/CreatePoll'
 import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
 import Polls from '@/components/Polls'
-import { PollStruct } from '@/utils/types'
+import { PollStruct, RootState } from '@/utils/types'
 import Head from 'next/head'
 import { generateFakePolls } from '@/services/data'
+import { useDispatch, useSelector } from 'react-redux'
+import { globalActions } from '@/store/globalSlices'
+import { useEffect } from 'react'
+
 
 export default function Home({ pollsData }: { pollsData: PollStruct[] }) {
+
+  const dispatch = useDispatch()
+
+  const {setPolls} = globalActions
+  const { polls } = useSelector((states: RootState) => states.globalStates)
+
+
+  useEffect(() => {
+    dispatch(setPolls(pollsData))
+  },[dispatch, setPolls, pollsData])
+
   return (
     <>
       <Head>
